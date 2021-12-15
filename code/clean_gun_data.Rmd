@@ -1,0 +1,80 @@
+---
+title: "annotated-gun-data-cleaning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = FALSE}
+library(kableExtra) # for printing tables
+library(cowplot)    # for side by side plots
+library(glmnet)     # to run ridge and lasso
+library(glmnetUtils)
+library(ISLR2)      # necessary for College data 
+library(pROC)       # for ROC curves
+library(tidyverse)  
+library(httr)
+```
+## R Markdown
+
+Import the gun data
+```{r}
+gun_data <- read.csv("data/stage3.csv")
+gun_data %>% head(10)
+```
+
+filter out columns we want
+```{r}
+gun_data_selected = gun_data %>%
+  select("incident_id", "date", "n_killed", "latitude", "longitude", "participant_age", "participant_gender", "state")
+gun_data_selected
+```
+
+Function to get FIPS codes for each shooting
+```{r}
+get_fips_codes <- function(latitudes, longitudes) {
+  i = 1
+  result = c()
+  for (latitude in latitudes) {
+    longitude = longitudes[i]
+    i = i + 1
+    res = GET(sprintf("https://geo.fcc.gov/api/census/area?lat=%f&lon=%f&format=json", latitude, longitude))
+    while (res$status_code != 200) {
+      res = GET(sprintf("https://geo.fcc.gov/api/census/area?lat=%f&lon=%f&format=json", latitude, longitude))
+    }
+    result = c(result, sprintf("FIPS:%s, STATE:%s",content(res)$results[[1]]$county_fips, content(res)$results[[1]]$state_name))
+    if (i %% 100 == 0) {
+      print(i)
+    }
+  }
+  return(result)
+}
+```
+
+```{r}
+gun_data_with_fips_first_50000 = gun_data_selected %>%
+  head(50000) %>%
+  drop_na() %>%
+  mutate(FIPS = get_fips_codes(latitude, longitude))
+```
+```{r}
+write.csv(gun_data_with_fips_first_50000, "../data/gun_data_1.csv")
+```
+
+```{r}
+read_csv("../data/gun_data_1.csv")
+```
+
+```{r}
+gun_data_with_fips_second_50000 = gun_data_selected %>%
+  head(100000) %>%
+  tail(50000) %>%
+  drop_na() %>%
+  mutate(FIPS = get_fips_codes(latitude, longitude))
+
+```
+```{r}
+write.csv(gun_data_with_fips_second_50000, "../data/gun_data_2.csv")
+```
