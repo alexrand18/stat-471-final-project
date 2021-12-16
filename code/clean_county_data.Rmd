@@ -21,3 +21,27 @@ raw_county_data = read.csv("https://www.openintro.org/data/csv/county_complete.c
 ```{r}
 write.csv(raw_county_data, "../data/raw/raw_county_data.csv")
 ```
+
+```{r}
+colnames(raw_county_data)
+```
+
+extract only the meaningful columns (one for each category in year closest to timeframe of gun dataframe)
+```{r}
+meaningful_cols = c("fips", "state", "name", "pop2014", "pop2015", "pop2016", "pop2017", "age_under_5_2017", "age_over_65_2017", "median_age_2017", "white_2010", "black_2017", "no_move_in_one_plus_year_2010", "speak_english_only_2017", "hs_grad_2017", "bachelors_2017", "computer_2017", "homeownership_2010", "per_capita_income_2017", "poverty_2016", "employed_2015", "uninsured_2017")
+
+simplified_df = raw_county_data %>%
+  select(meaningful_cols)
+
+##find the average population from 2014 to 2017 as population estimate
+simplified_df_with_population = simplified_df %>%
+  mutate(avg_population = (pop2014 + pop2015 + pop2016 + pop2017) / 4) %>%
+  select(-c(pop2014, pop2015, pop2016, pop2017))
+
+
+simplified_df_with_population
+```
+
+```{r}
+write.csv(simplified_df_with_population, "../data/cleaned/clean_county_data.csv")
+```
