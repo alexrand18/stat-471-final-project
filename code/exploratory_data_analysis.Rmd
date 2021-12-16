@@ -22,7 +22,8 @@ merged_df = gun_data %>%
   inner_join(county_data, by = "fips") %>%
   select(-c("X.x", "X.y", "incident_id", "state.x")) %>%
   mutate(state = state.y) %>%
-  select(-c("state.y")) %>%
+  mutate(employment = employed_2015 / avg_population) %>%
+  select(-c("state.y", "employed_2015")) %>%
   mutate(year = strtoi(x = substr(date, 1, 4), base = 10)) %>%
   mutate(month = strtoi(x = substr(date, 6, 7), base = 10)) %>%
   select(-c("date"))
@@ -46,7 +47,7 @@ merged_df = merged_df %>%
 ```
 
 ```{r}
-##what does the distribution of gun violence accross months look like?
+##what does the distribution of gun violence across months look like?
 merged_df %>%
   ggplot(aes(x = month)) +
   geom_histogram(bins = 24) +
@@ -61,10 +62,14 @@ grouped_gun_df = gun_data %>%
   summarize(total_incidents = n(), total_deaths = sum(n_killed))
 
 grouped_combined_df = grouped_gun_df %>%
-  inner_join(county_data, by = "fips") %>%
+  right_join(county_data, by = "fips") %>%
   mutate(incidents_per_year_per_capita = total_incidents / avg_population / 4) %>%
+  replace_na(list(total_incidents = 0, total_deaths = 0)) %>%
   mutate(killed_per_year_per_capita = total_deaths / avg_population / 4) %>%
-  select(-c(fips, X))
+  select(-c(fips, X)) %>%
+  drop_na()
+
+grouped_combined_df 
 
 ```
 
@@ -100,3 +105,292 @@ grouped_combined_df %>%
         col.names = c("State", "County", "Incidents Per Capita Per Year"))
 ```
 
+
+```{r}
+# create a heatmap of case fatality rate across the U.S.
+map_data("county") %>%
+  as_tibble() %>% 
+  left_join(grouped_combined_df %>% 
+              rename(region = state, 
+                     subregion = name,
+                     `Annual Gun Incident Per Capita` = incidents_per_year_per_capita) %>% 
+              mutate(region = str_to_lower(region), 
+                     subregion = sub(" county", "", str_to_lower(subregion))), 
+            by = c("region", "subregion")) %>%
+  ggplot() + 
+  geom_polygon(data=map_data("state"), 
+               aes(x=long, y=lat, group=group),
+               color="black", fill=NA,  size = 1, alpha = .3) + 
+  geom_polygon(aes(x=long, y=lat, group=group, fill = `Annual Gun Incident Per Capita`),
+               color="darkblue", size = .1) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_void()
+```
+
+
+```{r}
+##split the data into train and test
+grouped_combined_df %>%
+  ggplot(aes(x = incidents_per_year_per_capita)) +
+  geom_histogram() +
+  scale_y_log10() +
+  labs(title = "Distribution of Response Variable", x = "Average Annual Number of Violent Gun Incidents Per Capita", y = "Count (log scale)") +
+  theme_bw() 
+```
+
+```{r}
+##plot after transforming response variable
+grouped_combined_df %>%
+  mutate(log_incident_rate = log(incidents_per_year_per_capita)) %>%
+  ggplot(aes(x = log_incident_rate)) +
+  geom_histogram() +
+  scale_y_log10() +
+  labs(title = "Distribution of Response Variable After Log Transformation", x = "Average Annual Number of Violent Gun Incidents Per Capita", y = "Count (log scale)") +
+  theme_bw() 
+```
+
+```{r}
+## since data is less skewed after transformation, we should perform the log transformation on our response variable
+final_dataset = grouped_combined_df %>%
+  mutate(log_incident_rate = log(incidents_per_year_per_capita)) %>%
+  select(-c(name, state, incidents_per_year_per_capita, total_incidents, total_deaths, killed_per_year_per_capita, avg_population))
+
+final_dataset
+```
+
+```{r}
+tibble("Dataset" = c("Cleaned Gun Violence Data", "Cleaned County Data", "Merged Dataset"), "Number of Rows" = c(nrow(gun_data), nrow(county_data), nrow(final_dataset)), "Number of Columns" = c(ncol(gun_data), ncol(county_data), ncol(final_dataset))) %>% kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        col.names = c("Dataset", "Number of Rows", "Number of Columns"))
+```
+
+
+```{r}
+##split into test and train
+set.seed(5)
+n = nrow(final_dataset)
+train_samples = sample(1:n, round(0.8*n))
+gun_train = final_dataset[train_samples,]
+gun_test = final_dataset[-train_samples,]
+write.csv(gun_train, "training.csv")
+write.csv(gun_test, "test.csv")
+```
+
+##TODO: find summary statistics for response, Split Data plot relationship between response and other features, variation of response, variation of features, covariation of features
+
+```{r}
+##split into test and train
+set.seed(5)
+n = nrow(final_dataset)
+train_samples = sample(1:n, round(0.8*n))
+gun_train = final_dataset[train_samples,]
+gun_test = final_dataset[-train_samples,]
+write.csv(gun_train, "../data/training.csv")
+write.csv(gun_test, "../data/test.csv")
+```
+
+##TODO:S plot relationship between response and other features, variation of response, variation of features,
+
+```{r}
+##summary stats for the response
+median_incident_rate = exp(median(gun_train %>% pull(log_incident_rate)))
+var_incident_rate = var(exp(gun_train %>% pull(log_incident_rate)))
+median_incident_rate_log = median(gun_train %>% pull(log_incident_rate))
+var_incident_rate_log = var(gun_train %>% pull(log_incident_rate))
+summary_tibble = tibble("Type" = 
+                          c("Actual", "Log Transformed (Used in Models)"),
+                        "Median" = c(median_incident_rate,
+                                     median_incident_rate_log), 
+                        "Variance"= c(var_incident_rate,var_incident_rate_log) ) 
+
+summary_tibble %>% kable(format = "latex",
+        booktabs = TRUE, digits = 10, 
+        col.names = c("Type", "Median", "Variance"),
+        row.names = NA)
+  
+```
+
+
+```{r, fig.width = 10, fig.height = 20}
+##correlation plot between features
+library(corrplot)
+cor_M = gun_train %>% select(-c(log_incident_rate)) %>% cor()
+corrplot(cor_M, method="circle", type = "upper")
+```
+
+```{r, fig.width = 20, fig.height = 20}
+library(cowplot)
+# plot log_incident versus all features
+p1 = gun_train %>%
+  ggplot(aes(x = age_under_5_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Under 5", 
+       y = "Log(Gun Incident Rate)",
+       title = "Percentage Under 5") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p2 = gun_train %>%
+  ggplot(aes(x = age_over_65_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Over 65", 
+       y = "Log(Gun Incident Rate)",
+       title = "Percentage Over 65") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p3 = gun_train %>%
+  ggplot(aes(x = median_age_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Median Age", 
+       y = "Log(Gun Incident Rate)",
+       title = "Median Age") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p4 = gun_train %>%
+  ggplot(aes(x = white_2010, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Identifying as White", 
+       y = "Log(Gun Incident Rate)",
+       title = "Percentage Indentifying as White") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p5 = gun_train %>%
+  ggplot(aes(x = black_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Identifying as Black", 
+       y = "Log(Gun Incident Rate)",
+       title = "Percentage Identifying as Black") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p6 = gun_train %>%
+  ggplot(aes(x = no_move_in_one_plus_year_2010, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population That Lived In County In Previous Year", 
+       y = "Log(Gun Incident Rate)",
+       title = "Lived In County For More Than One Year") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p7 = gun_train %>%
+  ggplot(aes(x = speak_english_only_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Only Speaking English", 
+       y = "Log(Gun Incident Rate)",
+       title = "Only Speaking English") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p8 = gun_train %>%
+  ggplot(aes(x = hs_grad_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Graduated High School", 
+       y = "Log(Gun Incident Rate)",
+       title = "High School Graduates") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p9 = gun_train %>%
+  ggplot(aes(x = bachelors_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population With Bachelors Degree", 
+       y = "Log(Gun Incident Rate)",
+       title = "Bachelors Degree") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p10 = gun_train %>%
+  ggplot(aes(x = age_under_5_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Owning Computer", 
+       y = "Log(Gun Incident Rate)",
+       title = "Computer Owning") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p11 = gun_train %>%
+  ggplot(aes(x = homeownership_2010, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Owning a Home", 
+       y = "Log(Gun Incident Rate)",
+       title = "Homeownership") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p12 = gun_train %>%
+  ggplot(aes(x = per_capita_income_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Per Capita Income", 
+       y = "Log(Gun Incident Rate)",
+       title = "Income") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p13 = gun_train %>%
+  ggplot(aes(x = poverty_2016, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population In Poverty", 
+       y = "Log(Gun Incident Rate)",
+       title = "Poverty") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p14 = gun_train %>%
+  ggplot(aes(x = employed_2015, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Employed", 
+       y = "Log(Gun Incident Rate)",
+       title = "Employed") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p15 = gun_train %>%
+  ggplot(aes(x = uninsured_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Percentage of Population Uninsured", 
+       y = "Log(Gun Incident Rate)",
+       title = "Uninsured") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p16 = gun_train %>%
+  ggplot(aes(x = age_under_5_2017, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Federal Spending", 
+       y = "Log(Gun Incident Rate)",
+       title = "federal Spending") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+p17 = gun_train %>%
+  ggplot(aes(x = density_2010, y = log_incident_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = "y~x", se = FALSE) +
+  labs(x = "Population Desnity", 
+       y = "Log(Gun Incident Rate)",
+       title = "Population Density") +
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, 
+          p13, p14, p15, p16, p17, nrow = 5)
+```

@@ -28,7 +28,7 @@ colnames(raw_county_data)
 
 extract only the meaningful columns (one for each category in year closest to timeframe of gun dataframe)
 ```{r}
-meaningful_cols = c("fips", "state", "name", "pop2014", "pop2015", "pop2016", "pop2017", "age_under_5_2017", "age_over_65_2017", "median_age_2017", "white_2010", "black_2017", "no_move_in_one_plus_year_2010", "speak_english_only_2017", "hs_grad_2017", "bachelors_2017", "computer_2017", "homeownership_2010", "per_capita_income_2017", "poverty_2016", "employed_2015", "uninsured_2017")
+meaningful_cols = c("fips", "state", "name", "pop2014", "pop2015", "pop2016", "pop2017", "age_under_5_2017", "age_over_65_2017", "median_age_2017", "white_2010", "black_2017", "no_move_in_one_plus_year_2010", "speak_english_only_2017", "hs_grad_2017", "bachelors_2017", "computer_2017", "homeownership_2010", "per_capita_income_2017", "poverty_2016", "employed_2015", "uninsured_2017", "fed_spending_2009", "density_2010")
 
 simplified_df = raw_county_data %>%
   select(meaningful_cols)
