@@ -36,6 +36,7 @@ simplified_df = raw_county_data %>%
 ##find the average population from 2014 to 2017 as population estimate
 simplified_df_with_population = simplified_df %>%
   mutate(avg_population = (pop2014 + pop2015 + pop2016 + pop2017) / 4) %>%
+  mutate(employed_2015 = employed_2015 / avg_population) %>%
   select(-c(pop2014, pop2015, pop2016, pop2017))
 
 
