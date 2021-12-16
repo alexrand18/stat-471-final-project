@@ -1,0 +1,102 @@
+---
+title: "exploratory_data_analysis.Rmd"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = FALSE}
+library(kableExtra) # for printing tables
+library(cowplot)    # for side by side plots
+library(tidyverse)  
+library(dplyr)
+```
+
+```{r}
+##load in the cleaned datasets and merge on fips
+gun_data = read.csv("../data/cleaned/cleaned_gun_data_with_fips.csv")
+county_data = read.csv("../data/cleaned/clean_county_data.csv")
+merged_df = gun_data %>%
+  inner_join(county_data, by = "fips") %>%
+  select(-c("X.x", "X.y", "incident_id", "state.x")) %>%
+  mutate(state = state.y) %>%
+  select(-c("state.y")) %>%
+  mutate(year = strtoi(x = substr(date, 1, 4), base = 10)) %>%
+  mutate(month = strtoi(x = substr(date, 6, 7), base = 10)) %>%
+  select(-c("date"))
+
+```
+```{r}
+#first, let look at the distribution of the 
+merged_df %>%
+  ggplot(aes(x = year)) +
+  geom_histogram() +
+  labs(x = "Year", y = "Number of Violent Gun Crimes") +
+  theme_bw()
+```
+
+
+```{r}
+## from this output, we should only look at the years 2014-2017
+merged_df = merged_df %>%
+  filter(year > 2013) %>%
+  filter(year < 2018)
+```
+
+```{r}
+##what does the distribution of gun violence accross months look like?
+merged_df %>%
+  ggplot(aes(x = month)) +
+  geom_histogram(bins = 24) +
+  labs(x = "Month", y = "Number of Violent Gun Crimes From 2014 -2017") +
+  theme_bw()
+```
+
+```{r}
+## group data so that we have incidents/capita and deaths/capita
+grouped_gun_df = gun_data %>%
+  group_by(fips) %>%
+  summarize(total_incidents = n(), total_deaths = sum(n_killed))
+
+grouped_combined_df = grouped_gun_df %>%
+  inner_join(county_data, by = "fips") %>%
+  mutate(incidents_per_year_per_capita = total_incidents / avg_population / 4) %>%
+  mutate(killed_per_year_per_capita = total_deaths / avg_population / 4) %>%
+  select(-c(fips, X))
+
+```
+
+```{r}
+##which counties have the most total incidents?
+grouped_combined_df %>%
+  arrange(desc(total_incidents)) %>%
+  head(10) %>%
+  select("state", "name", "total_incidents") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        col.names = c("State", "County", "Total Incidents From 2014-2017"))
+```
+
+```{r}
+##which counties have the most total incidents?
+grouped_combined_df %>%
+  arrange(desc(total_deaths)) %>%
+  head(10) %>%
+  select("state", "name", "total_deaths") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        col.names = c("State", "County", "Total Gun Deaths From 2014-2017"))
+```
+
+```{r}
+grouped_combined_df %>%
+  arrange(desc(incidents_per_year_per_capita)) %>%
+  head(10) %>%
+  select("state", "name", "incidents_per_year_per_capita") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 10, 
+        col.names = c("State", "County", "Incidents Per Capita Per Year"))
+```
+
