@@ -1,7 +1,3 @@
----
-title: "annotated-gun-data-cleaning"
-output: html_document
----
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -28,8 +24,7 @@ gun_data %>% head(10)
 filter out columns we want
 ```{r}
 gun_data_selected = gun_data %>%
-  select("incident_id", "date", "n_killed", "latitude", "longitude", "participant_age", "participant_gender", "state")
-gun_data_selected
+  select("incident_id", "date", "n_killed", "latitude", "longitude", "participant_age", "participant_gender", "state") %>% drop_na()
 ```
 
 Function to get FIPS codes for each shooting
@@ -44,15 +39,33 @@ get_fips_codes <- function(latitudes, longitudes) {
     while (res$status_code != 200) {
       res = GET(sprintf("https://geo.fcc.gov/api/census/area?lat=%f&lon=%f&format=json", latitude, longitude))
     }
-    result = c(result, sprintf("FIPS:%s, STATE:%s",content(res)$results[[1]]$county_fips, content(res)$results[[1]]$state_name))
+    tryCatch(
+        expr = {
+            result = c(result, sprintf("FIPS:%s, STATE:%s",content(res)$results[[1]]$county_fips, content(res)$results[[1]]$state_name))
+        },
+        error = function(e){
+            print(e)
+        },
+        warning = function(w){
+            message('Caught a warning!')
+            print(w)
+        },
+        finally = {
+        }
+    ) 
     if (i %% 100 == 0) {
       print(i)
+    }
+    if (length(result) + 1 != i) {
+      result = c(result, "NA")
     }
   }
   return(result)
 }
 ```
 
+
+Get FIPS column using above function for each row, 50000 rows at a time.
 ```{r}
 gun_data_with_fips_first_50000 = gun_data_selected %>%
   head(50000) %>%
@@ -60,12 +73,9 @@ gun_data_with_fips_first_50000 = gun_data_selected %>%
   mutate(FIPS = get_fips_codes(latitude, longitude))
 ```
 ```{r}
-write.csv(gun_data_with_fips_first_50000, "../data/gun_data_1.csv")
+write.csv(gun_data_with_fips_first_50000, "../data/intermediate_steps/gun_data_1.csv")
 ```
 
-```{r}
-read_csv("../data/gun_data_1.csv")
-```
 
 ```{r}
 gun_data_with_fips_second_50000 = gun_data_selected %>%
@@ -76,5 +86,77 @@ gun_data_with_fips_second_50000 = gun_data_selected %>%
 
 ```
 ```{r}
-write.csv(gun_data_with_fips_second_50000, "../data/gun_data_2.csv")
+write.csv(gun_data_with_fips_second_50000, "../data/intermediate_steps/gun_data_2.csv")
+```
+
+```{r}
+gun_data_with_fips_third_50000 = gun_data_selected %>%
+  head(150000) %>%
+  tail(50000) %>%
+  drop_na() %>%
+  mutate(FIPS = get_fips_codes(latitude, longitude))
+
+```
+```{r}
+write.csv(gun_data_with_fips_third_50000, "../data/intermediate_steps/gun_data_3.csv")
+```
+
+```{r}
+gun_data_with_fips_fourth_50000 = gun_data_selected %>%
+  head(200000) %>%
+  tail(50000) %>%
+  drop_na() %>%
+  mutate(FIPS = get_fips_codes(latitude, longitude))
+
+```
+```{r}
+write.csv(gun_data_with_fips_fourth_50000, "../data/intermediate_steps/gun_data_4.csv")
+```
+
+
+```{r}
+gun_data_with_fips_last = gun_data_selected %>%
+  tail(40000) %>%
+  drop_na() %>%
+  mutate(FIPS = get_fips_codes(latitude, longitude))
+
+```
+```{r}
+write.csv(gun_data_with_fips_last, "../data/intermediate_steps/gun_data_5.csv")
+```
+
+
+Concatenate tibbles
+
+```{r}
+df_1 = read_csv("../data/intermediate_steps/gun_data_1.csv")
+df_2 = read_csv("../data/intermediate_steps/gun_data_2.csv")
+df_3 = read_csv("../data/intermediate_steps/gun_data_3.csv")
+df_4 = read_csv("../data/intermediate_steps/gun_data_4.csv")
+df_5 = read_csv("../data/intermediate_steps/gun_data_5.csv")
+full_df = bind_rows(df_1, df_2, df_3, df_4, df_5)
+```
+
+Remove duplicated rows
+```{r}
+full_df = full_df %>%
+  select(-c("...1")) %>%
+  group_by(incident_id) %>%
+  filter(row_number(date) == 1)
+```
+
+Extract fips code and make sure that the states match. Then select desired fields
+```{r}
+ungrouped_df = full_df %>% 
+  mutate(fips = substr(FIPS, 6, 10)) %>%
+  mutate(state_api = substr(FIPS, 19, 50)) %>%
+  filter(state == state_api) %>%
+  select(c(incident_id, date, state, fips, n_killed)) %>%
+  ungroup()
+
+```
+
+Write final table to csv file
+```{r}
+write.csv(ungrouped_df, "../data/cleaned/cleaned_gun_data_with_fips.csv")
 ```
