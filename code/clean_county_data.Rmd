@@ -1,0 +1,23 @@
+---
+title: "clean_county_data"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+import packages
+```{r}
+library(tidyverse)
+```
+
+
+read in the csv file from url
+```{r}
+raw_county_data = read.csv("https://www.openintro.org/data/csv/county_complete.csv")
+```
+
+```{r}
+write.csv(raw_county_data, "../data/raw/raw_county_data.csv")
+```
