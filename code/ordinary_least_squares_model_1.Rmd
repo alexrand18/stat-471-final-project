@@ -1,0 +1,28 @@
+---
+title: "ordinary_least_squares_model_0"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+##import data
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+```
+
+```{r}
+##fit model
+lm_fit = lm(log_incident_rate ~ ., data = gun_train)
+summary(lm_fit)
+```
+
+```{r}
+## resulting RMSE is 0.8134264
+linear_predictions = predict(lm_fit, newdata = gun_test)
+linear_RMSE = sqrt(mean((linear_predictions - gun_test$log_incident_rate)^2))
+linear_RMSE
+```
+
