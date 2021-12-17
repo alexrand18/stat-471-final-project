@@ -1,0 +1,52 @@
+---
+title: "elastic_net_regression_model_4"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(glmnet)
+library(glmnetUtils)
+library(kableExtra)
+```
+
+```{r}
+##import data and util functions
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+source("util_functions.R")
+```
+
+```{r}
+set.seed(5)
+##fit ridge regression model with 10 cv folds
+elastic_fit = cva.glmnet(log_incident_rate ~ ., nfolds = 10, data = gun_train)
+```
+
+```{r}
+##plot cv plot
+plot_cva_glmnet(elastic_fit)
+```
+
+```{r}
+elnet_fit_best = extract_best_elnet(elastic_fit)
+plot(elnet_fit_best)
+```
+
+
+```{r}
+#plot features
+plot_glmnet(elnet_fit_best, gun_train, features_to_plot = 6)
+```
+
+```{r} 
+## Elastic RMSE is 0.827547
+elnet_predictions = predict(elastic_fit, 
+                            alpha = elastic_fit$alpha,
+                            newdata = gun_test,
+                            s = "lambda.1se") %>% as.numeric()
+elnet_RMSE = sqrt(mean((elnet_predictions - gun_test$log_incident_rate)^2))
+elnet_RMSE
+```
+
+
