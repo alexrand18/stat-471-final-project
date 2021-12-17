@@ -1,0 +1,47 @@
+---
+title: "ridge_regression_model_2"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(glmnet)
+library(glmnetUtils)
+```
+
+```{r}
+##import data
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+```
+
+```{r}
+##fit ridge regression model with 10 cv folds
+ridge_fit = cv.glmnet(log_incident_rate ~ ., alpha = 0, nfolds = 10, data = gun_train)
+```
+
+```{r}
+##plot cv plot
+plot(ridge_fit)
+```
+
+```{r}
+lambda = ridge_fit$lambda.1se
+sprintf("The value of lambda based on the one-standard-error rule: %f",
+        lambda)
+```
+
+```{r}
+#plot features
+plot_glmnet(ridge_fit, gun_train, features_to_plot = 6)
+```
+
+```{r} 
+## Ridge RMSE is 0.8268
+ridge_predictions = predict(ridge_fit, 
+                            newdata = gun_test, 
+                            s = "lambda.1se")
+ridge_RMSE = sqrt(mean((ridge_predictions - gun_test$log_incident_rate)^2))
+ridge_RMSE
+```
+
