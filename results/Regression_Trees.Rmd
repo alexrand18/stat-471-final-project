@@ -1,0 +1,74 @@
+---
+title: "Regression Trees"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, message = FALSE}
+library(rpart)         # to train decision trees
+library(rpart.plot)    # to plot decision trees
+library(randomForest)  # random forests
+library(gbm)           # boosting
+library(tidyverse)     # tidyverse
+library(kableExtra)    # for printing tables
+library(cowplot)       # for side by side plots
+```
+
+```{r}
+##import data
+#gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+#gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/training.csv") %>% select(-c(X))
+gun_test = gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/test.csv") %>% select(-c(X))
+```
+## Regression Trees
+```{r}
+# fit regression tree
+tree_fit = rpart(log_incident_rate ~ ., data = gun_train)
+rpart.plot(tree_fit) # plot tree
+```
+
+#Tree Pruning and Cross-Validation
+```{r}
+cp_table = printcp(tree_fit) %>% as_tibble()
+cp_table %>% 
+  ggplot(aes(x = nsplit+1, y = xerror, 
+             ymin = xerror - xstd, ymax = xerror + xstd)) + 
+  geom_point() + geom_line() +
+  geom_errorbar(width = 0.2) +
+  xlab("Number of terminal nodes") + ylab("CV error") + 
+  geom_hline(aes(yintercept = min(xerror)), linetype = "dashed") + 
+  theme_bw()
+
+```
+
+#Choosing Optimal Model based on 1.se
+```{r}
+optimal_tree_info = cp_table %>% 
+  filter(xerror - xstd < min(xerror)) %>% 
+  arrange(nsplit) %>% 
+  head(1)
+optimal_tree_info
+```
+#Extracting and Plotting Optimal Tree
+```{r}
+optimal_tree = prune(tree_fit, cp = optimal_tree_info$CP)
+rpart.plot(optimal_tree)
+```
+
+#Calculating Predictions and RMSE
+```{r}
+pred = predict(optimal_tree, newdata = gun_test)
+rmse_rtree = mean((pred-gun_test$log_incident_rate)^2)
+rmse_rtree
+```
+#Variable Importance
+```{r}
+optimal_tree$variable.importance
+```
+# Partial Dependence Plots
+```{r}
+
+```
+

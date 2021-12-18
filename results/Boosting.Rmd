@@ -1,0 +1,123 @@
+---
+title: "Boosting"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, message = FALSE}
+library(rpart)         # to train decision trees
+library(rpart.plot)    # to plot decision trees
+library(randomForest)  # random forests
+library(gbm)           # boosting
+library(tidyverse)     # tidyverse
+library(kableExtra)    # for printing tables
+library(cowplot)       # for side by side plots
+```
+
+```{r}
+##import data
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+```
+
+# Training the model:
+```{r}
+set.seed(1)
+gbm_fit = gbm(log_incident_rate ~ .,
+              distribution = "gaussian",
+              n.trees = 100,
+              interaction.depth = 1,
+              shrinkage = 0.1,
+              cv.folds = 5,
+              data = gun_train)
+```
+
+#CV error Plot
+```{r}
+opt_num_trees = gbm.perf(gbm_fit)
+opt_num_trees
+```
+
+## Tuning the interaction depth
+
+The quick way to tune the interaction depth is to try out a few different values:
+```{r}
+set.seed(1)
+gbm_fit_1 = gbm(log_incident_rate ~ .,
+              distribution = "gaussian",
+              n.trees = 100,
+              interaction.depth = 1,
+              shrinkage = 0.1,
+              cv.folds = 5,
+              data = gun_train)
+gbm_fit_2 = gbm(log_incident_rate ~ .,
+              distribution = "gaussian",
+              n.trees = 100,
+              interaction.depth = 2,
+              shrinkage = 0.1,
+              cv.folds = 5,
+              data = gun_train)
+gbm_fit_3 = gbm(log_incident_rate ~ .,
+              distribution = "gaussian",
+              n.trees = 100,
+              interaction.depth = 3,
+              shrinkage = 0.1,
+              cv.folds = 5,
+              data = gun_train)
+```
+
+We can extract the CV errors from each of these objects by using the `cv.error` field:
+```{r}
+ntrees = 100
+cv_errors = bind_rows(
+  tibble(ntree = 1:ntrees, cv_err = gbm_fit_1$cv.error, depth = 1),
+  tibble(ntree = 1:ntrees, cv_err = gbm_fit_2$cv.error, depth = 2),
+  tibble(ntree = 1:ntrees, cv_err = gbm_fit_3$cv.error, depth = 3)
+)
+cv_errors
+```
+
+We can then plot these as follows:
+```{r}
+cv_errors %>%
+  ggplot(aes(x = ntree, y = cv_err, colour = factor(depth))) +
+  geom_line() + theme_bw()
+```
+# Extracting plot with lowest cv_error
+```{r}
+gbm2_min_cv_error = min(gbm_fit_2$cv.error)
+gbm3_min_cv_error = min(gbm_fit_3$cv.error)
+gbm2_min_cv_error > gbm3_min_cv_error 
+gbm_fit_optimal = gbm_fit_3
+```
+```{r}
+optimal_num_trees = gbm.perf(gbm_fit_3, plot.it = FALSE) 
+optimal_num_trees
+```
+
+#Predictions and RMSE
+```{r}
+gbm_predictions = predict(gbm_fit_optimal, n.trees = optimal_num_trees,
+                          newdata = gun_test)
+
+rmse_boost = sqrt(mean((gbm_predictions - gun_test$log_incident_rate)^2))
+rmse_boost
+```
+
+
+# calculate variable importance scores
+```{r}
+summary(gbm_fit_optimal, n.trees = optimal_num_trees, plotit = FALSE)
+```
+
+# Partial dependence plots
+```{r}
+p1 = plot(gbm_fit_optimal, i.var = "black_2017", n.trees = optimal_num_trees)
+p2 = plot(gbm_fit_optimal, i.var = "fed_spending_2009", n.trees = optimal_num_trees)
+p3 = plot(gbm_fit_optimal, i.var = "homeownership_2010", n.trees = optimal_num_trees)
+p4 = plot(gbm_fit_optimal, i.var = "poverty_2016", n.trees = optimal_num_trees)
+plot_grid(p1,p2,p3,p4,nrow = 2)
+```
+
+

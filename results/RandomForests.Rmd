@@ -1,0 +1,74 @@
+---
+title: "Random Forests"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, message = FALSE}
+library(rpart)         # to train decision trees
+library(rpart.plot)    # to plot decision trees
+library(randomForest)  # random forests
+library(gbm)           # boosting
+library(tidyverse)     # tidyverse
+library(kableExtra)    # for printing tables
+library(cowplot)       # for side by side plots
+```
+
+```{r}
+##import data
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+```
+
+## Training a random forest with deafult parameters
+```{r}
+rf_fit = randomForest(log_incident_rate ~ ., data = gun_train)
+```
+
+```{r}
+plot(rf_fit)
+```
+
+```{r}
+# might want to cache this chunk!
+mvalues = seq(1,18, by = 2)
+oob_errors = numeric(length(mvalues))
+ntree = 500
+for(idx in 1:length(mvalues)){
+  m = mvalues[idx]
+  rf_fit = randomForest(log_incident_rate ~ ., mtry = m, data = gun_train)
+  oob_errors[idx] = rf_fit$mse[ntree]
+}
+m_and_oob_errors = tibble(m = mvalues, oob_err = oob_errors) 
+m_and_oob_errors %>%
+  ggplot(aes(x = m, y = oob_err)) + 
+  geom_line() + geom_point() + 
+  scale_x_continuous(breaks = mvalues) +
+  theme_bw()
+
+```
+# Extract best m and plot optimal model
+```{r}
+# extract m corresponding to min value of OOB error
+best_m = m_and_oob_errors %>% arrange(oob_errors) %>% head(1) %>% pull(m)
+
+#plotting optimal m with lowest OOB error and `importance = TRUE` so that we can better interpret the random forest ultimately used to make predictions.
+rf_fit_tuned = randomForest(log_incident_rate ~ ., mtry = best_m, ntree = 500,
+                            importance = TRUE, data = gun_train)
+```
+## Making predictions based on a random forest
+```{r}
+rf_predictions = predict(rf_fit_tuned, newdata = gun_test)
+
+rmse_rf = mean((rf_predictions - gun_test$log_incident_rate)^2)
+rmse_rf
+```
+## Variable importance
+```{r}
+rf_fit_tuned$importance
+```
+```{r fig.width = 10, fig.height = 8 }
+varImpPlot(rf_fit_tuned)
+```
+```
