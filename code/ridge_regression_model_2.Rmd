@@ -13,10 +13,12 @@ library(glmnetUtils)
 ##import data
 gun_train = read.csv("../data/training.csv") %>% select(-c(X))
 gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+source("util_functions.R")
 ```
 
 ```{r}
 ##fit ridge regression model with 10 cv folds
+set.seed(5)
 ridge_fit = cv.glmnet(log_incident_rate ~ ., alpha = 0, nfolds = 10, data = gun_train)
 ```
 
@@ -37,7 +39,7 @@ plot_glmnet(ridge_fit, gun_train, features_to_plot = 6)
 ```
 
 ```{r} 
-## Ridge RMSE is 0.8268
+## Ridge RMSE is 0.827547
 ridge_predictions = predict(ridge_fit, 
                             newdata = gun_test, 
                             s = "lambda.1se")

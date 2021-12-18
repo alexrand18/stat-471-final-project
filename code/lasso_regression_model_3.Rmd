@@ -19,6 +19,7 @@ source("util_functions.R")
 
 ```{r}
 ##fit ridge regression model with 10 cv folds
+set.seed(5)
 lasso_fit = cv.glmnet(log_incident_rate ~ ., alpha = 1, nfolds = 10, data = gun_train)
 ```
 
@@ -47,7 +48,7 @@ plot_glmnet(lasso_fit, gun_train, features_to_plot = 6)
 ```
 
 ```{r} 
-## Lasso RMSE is 0.8334966
+## Lasso RMSE is 0.8317696
 lasso_predictions = predict(lasso_fit, 
                             newdata = gun_test, 
                             s = "lambda.1se")
