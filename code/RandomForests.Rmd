@@ -17,8 +17,8 @@ library(cowplot)       # for side by side plots
 
 ```{r}
 ##import data
-gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/training.csv") %>% select(-c(X))
-gun_test = gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/test.csv") %>% select(-c(X))
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = read.csv("../data/test.csv") %>% select(-c(X))
 ```
 
 ## Training a random forest with deafult parameters
@@ -32,6 +32,7 @@ plot(rf_fit)
 
 ```{r}
 # might want to cache this chunk!
+set.seed(1)
 mvalues = seq(1,18, by = 2)
 oob_errors = numeric(length(mvalues))
 ntree = 500

@@ -104,7 +104,6 @@ rmse_boost = sqrt(mean((gbm_predictions - gun_test$log_incident_rate)^2))
 rmse_boost
 ```
 
-
 # calculate variable importance scores
 ```{r}
 summary(gbm_fit_optimal, n.trees = optimal_num_trees, plotit = FALSE)
