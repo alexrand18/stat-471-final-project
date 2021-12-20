@@ -91,7 +91,7 @@ gbm3_min_cv_error = min(gbm_fit_3$cv.error)
 gbm_fit_optimal = gbm_fit_2
 ```
 ```{r}
-optimal_num_trees = gbm.perf(gbm_fit_3, plot.it = FALSE) 
+optimal_num_trees = gbm.perf(gbm_fit_2, plot.it = FALSE) 
 optimal_num_trees
 ```
 
