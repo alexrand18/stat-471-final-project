@@ -46,21 +46,21 @@ The quick way to tune the interaction depth is to try out a few different values
 set.seed(1)
 gbm_fit_1 = gbm(log_incident_rate ~ .,
               distribution = "gaussian",
-              n.trees = 100,
+              n.trees = 1000,
               interaction.depth = 1,
               shrinkage = 0.1,
               cv.folds = 5,
               data = gun_train)
 gbm_fit_2 = gbm(log_incident_rate ~ .,
               distribution = "gaussian",
-              n.trees = 100,
+              n.trees = 1000,
               interaction.depth = 2,
               shrinkage = 0.1,
               cv.folds = 5,
               data = gun_train)
 gbm_fit_3 = gbm(log_incident_rate ~ .,
               distribution = "gaussian",
-              n.trees = 100,
+              n.trees = 1000,
               interaction.depth = 3,
               shrinkage = 0.1,
               cv.folds = 5,
@@ -69,7 +69,7 @@ gbm_fit_3 = gbm(log_incident_rate ~ .,
 
 We can extract the CV errors from each of these objects by using the `cv.error` field:
 ```{r}
-ntrees = 100
+ntrees = 1000
 cv_errors = bind_rows(
   tibble(ntree = 1:ntrees, cv_err = gbm_fit_1$cv.error, depth = 1),
   tibble(ntree = 1:ntrees, cv_err = gbm_fit_2$cv.error, depth = 2),
@@ -88,11 +88,10 @@ cv_errors %>%
 ```{r}
 gbm2_min_cv_error = min(gbm_fit_2$cv.error)
 gbm3_min_cv_error = min(gbm_fit_3$cv.error)
-gbm2_min_cv_error > gbm3_min_cv_error 
-gbm_fit_optimal = gbm_fit_3
+gbm_fit_optimal = gbm_fit_2
 ```
 ```{r}
-optimal_num_trees = gbm.perf(gbm_fit_3, plot.it = FALSE) 
+optimal_num_trees = gbm.perf(gbm_fit_2, plot.it = FALSE) 
 optimal_num_trees
 ```
 
@@ -105,7 +104,6 @@ rmse_boost = sqrt(mean((gbm_predictions - gun_test$log_incident_rate)^2))
 rmse_boost
 ```
 
-
 # calculate variable importance scores
 ```{r}
 summary(gbm_fit_optimal, n.trees = optimal_num_trees, plotit = FALSE)
@@ -117,7 +115,7 @@ p1 = plot(gbm_fit_optimal, i.var = "black_2017", n.trees = optimal_num_trees)
 p2 = plot(gbm_fit_optimal, i.var = "fed_spending_2009", n.trees = optimal_num_trees)
 p3 = plot(gbm_fit_optimal, i.var = "homeownership_2010", n.trees = optimal_num_trees)
 p4 = plot(gbm_fit_optimal, i.var = "poverty_2016", n.trees = optimal_num_trees)
-plot_grid(p1,p2,p3,p4,nrow = 2)
+plot_grid(p2,p1,p4,p3,nrow = 2)
 ```
 
 

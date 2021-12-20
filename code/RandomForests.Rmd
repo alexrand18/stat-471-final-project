@@ -32,6 +32,7 @@ plot(rf_fit)
 
 ```{r}
 # might want to cache this chunk!
+set.seed(1)
 mvalues = seq(1,18, by = 2)
 oob_errors = numeric(length(mvalues))
 ntree = 500
@@ -49,13 +50,14 @@ m_and_oob_errors %>%
 
 ```
 # Extract best m and plot optimal model
-```{r}
+```{r, fig.cap= "rf plot, m =5"}
 # extract m corresponding to min value of OOB error
 best_m = m_and_oob_errors %>% arrange(oob_errors) %>% head(1) %>% pull(m)
 
 #plotting optimal m with lowest OOB error and `importance = TRUE` so that we can better interpret the random forest ultimately used to make predictions.
 rf_fit_tuned = randomForest(log_incident_rate ~ ., mtry = best_m, ntree = 500,
                             importance = TRUE, data = gun_train)
+plot(rf_fit_tuned)
 ```
 ## Making predictions based on a random forest
 ```{r}
