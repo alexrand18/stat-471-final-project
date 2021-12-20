@@ -19,12 +19,13 @@ library(cowplot)       # for side by side plots
 ##import data
 #gun_train = read.csv("../data/training.csv") %>% select(-c(X))
 #gun_test = read.csv("../data/test.csv") %>% select(-c(X))
-gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/training.csv") %>% select(-c(X))
-gun_test = gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/test.csv") %>% select(-c(X))
+gun_train = read.csv("../data/training.csv") %>% select(-c(X))
+gun_test = gun_train = read.csv("../data/test.csv") %>% select(-c(X))
 ```
 ## Regression Trees
 ```{r}
 # fit regression tree
+set.seed(1)
 tree_fit = rpart(log_incident_rate ~ ., data = gun_train)
 rpart.plot(tree_fit) # plot tree
 ```
@@ -60,15 +61,12 @@ rpart.plot(optimal_tree)
 #Calculating Predictions and RMSE
 ```{r}
 pred = predict(optimal_tree, newdata = gun_test)
-rmse_rtree = mean((pred-gun_test$log_incident_rate)^2)
+rmse_rtree = sqrt(mean((pred-gun_test$log_incident_rate)^2))
 rmse_rtree
 ```
 #Variable Importance
 ```{r}
 optimal_tree$variable.importance
 ```
-# Partial Dependence Plots
-```{r}
 
-```
 

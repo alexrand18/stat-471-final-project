@@ -61,7 +61,7 @@ rf_fit_tuned = randomForest(log_incident_rate ~ ., mtry = best_m, ntree = 500,
 ```{r}
 rf_predictions = predict(rf_fit_tuned, newdata = gun_test)
 
-rmse_rf = mean((rf_predictions - gun_test$log_incident_rate)^2)
+rmse_rf = sqrt(mean((rf_predictions - gun_test$log_incident_rate)^2))
 rmse_rf
 ```
 ## Variable importance

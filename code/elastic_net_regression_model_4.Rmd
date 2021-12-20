@@ -47,6 +47,12 @@ elnet_predictions = predict(elastic_fit,
                             s = "lambda.1se") %>% as.numeric()
 elnet_RMSE = sqrt(mean((elnet_predictions - gun_test$log_incident_rate)^2))
 elnet_RMSE
+
+mean_val = mean(gun_train$log_incident_rate)
 ```
 
+```{r}
+extract_std_coefs(elnet_fit_best, gun_train) %>% 
+  filter(coefficient != 0)
+```
 

@@ -35,7 +35,7 @@ sprintf("The value of lambda based on the one-standard-error rule: %f",
 
 ```{r}
 #plot features
-plot_glmnet(ridge_fit, gun_train, features_to_plot = 6)
+plot_glmnet(ridge_fit, gun_train, features_to_plot = 10)
 ```
 
 ```{r} 
