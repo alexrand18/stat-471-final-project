@@ -17,8 +17,8 @@ library(cowplot)       # for side by side plots
 
 ```{r}
 ##import data
-gun_train = read.csv("../data/training.csv") %>% select(-c(X))
-gun_test = read.csv("../data/test.csv") %>% select(-c(X))
+gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/training.csv") %>% select(-c(X))
+gun_test = gun_train = read.csv("/Users/patrickmcnally/Desktop/stat-471-final-project/data/test.csv") %>% select(-c(X))
 ```
 
 ## Training a random forest with deafult parameters
@@ -49,19 +49,20 @@ m_and_oob_errors %>%
 
 ```
 # Extract best m and plot optimal model
-```{r}
+```{r, fig.cap= "rf plot, m =5"}
 # extract m corresponding to min value of OOB error
 best_m = m_and_oob_errors %>% arrange(oob_errors) %>% head(1) %>% pull(m)
 
 #plotting optimal m with lowest OOB error and `importance = TRUE` so that we can better interpret the random forest ultimately used to make predictions.
 rf_fit_tuned = randomForest(log_incident_rate ~ ., mtry = best_m, ntree = 500,
                             importance = TRUE, data = gun_train)
+plot(rf_fit_tuned)
 ```
 ## Making predictions based on a random forest
 ```{r}
 rf_predictions = predict(rf_fit_tuned, newdata = gun_test)
 
-rmse_rf = mean((rf_predictions - gun_test$log_incident_rate)^2)
+rmse_rf = sqrt(mean((rf_predictions - gun_test$log_incident_rate)^2))
 rmse_rf
 ```
 ## Variable importance
