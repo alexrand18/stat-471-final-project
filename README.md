@@ -1,5 +1,7 @@
 **Title**: Socioeconomic Influences on Gun Violence
+
 **Authors**: Alex Rand and Patrick McNally
+
 **Date**: 12/20/2021
 
 **Executive Summary**: Gun violence is a national public health epidemic that exacts a substantial toll on U.S. society. Despite increasing efforts by the U.S. government and local policymakers, 2021 is on pace to be the worst year for gun violence in decades, surpassing even the high levels last year. Therefore we decided to look into various socioeconomic factors across US counties and analyze which variables were most predictive of fatal gun incidence rates from 2013 to 2018. 					
